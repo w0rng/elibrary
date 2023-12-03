@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import TypeVar, Generic, Optional
 
 from pydantic import BaseModel
 
@@ -17,11 +17,10 @@ class ResponseSearch(BaseModel):
     articles: list[Article]
 
 
-class Error(BaseModel):
-    message: str
+DataT = TypeVar('DataT')
 
 
-class Task(BaseModel):
-    id: str
-    status: str
-    result: Optional[Any] = None
+class Response(BaseModel, Generic[DataT]):
+    error: Optional[str] = None
+    status: int = 200
+    data: Optional[DataT] = None

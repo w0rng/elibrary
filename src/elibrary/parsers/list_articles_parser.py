@@ -33,11 +33,7 @@ class ListArticlesParser:
 
             if not title or not url or not date or not authors:
                 logger.warning(
-                    "Skip article with title: %s; url: %s; date: %s; authors: %s",
-                    title,
-                    url,
-                    date,
-                    authors,
+                    f"Skip article with title: {title}; url: {url}; date: {date}; authors: {authors}",
                     extra=self.log_extra
                 )
                 continue

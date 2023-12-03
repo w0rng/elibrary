@@ -4,11 +4,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.handler import router
-from api.schemas import Error
+from api.schemas import Response
 from logger import logger
 
 app = FastAPI()
-app.include_router(router)
+app.include_router(router, prefix="/search")
 
 
 @app.middleware("http")
@@ -22,4 +22,4 @@ async def request_middleware(request: Request, call_next):
         return await call_next(request)
     except Exception as e:
         logger.exception(str(e))
-        return JSONResponse(content=Error(message=str(e)), status_code=500)
+        return JSONResponse(content=Response(error=str(e), status=500).dict(), status_code=500)

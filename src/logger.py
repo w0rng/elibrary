@@ -11,7 +11,7 @@ def serialize(record):
         "level": record["level"].name,
         **record["extra"].get("extra", {}),
     }
-    return json.dumps(subset)
+    return json.dumps(subset, ensure_ascii=False)
 
 
 def patching(record):

@@ -1,37 +1,82 @@
-import uuid
+import math
 
 from fastapi import APIRouter, Request
 
-from api.schemas import Task
-from redis_client import redis
-from tasks.get_articles import get_articles
+from api.schemas import Response, ResponseSearch, Article
+from elibrary import ELibrarySearcher
+from google_scholar import GoogleSearcher
+
+from elibrary.exceptions import CaptchaError, ELibraryProblem
 
 router = APIRouter()
 
 
-@router.get("/search")
-async def search(request: Request, text: str, page: int = 1) -> Task:
+@router.get("/elibrary", response_model=Response[ResponseSearch])
+async def search(request: Request, text: str, page: int = 1) -> Response[ResponseSearch]:
     log_extra: dict = request.state.log_extra
     log_extra.update({"search": text, "page": page})
 
-    task_id = str(uuid.uuid4())
-    get_articles.send(task_id, text, page, log_extra=log_extra)
+    try:
+        searcher = ELibrarySearcher(text, page, log_extra=log_extra)
+        articles = searcher.articles()
+    except CaptchaError:
+        return Response[ResponseSearch](
+            error="Captcha detected",
+            status=500,
+        )
+    except ELibraryProblem:
+        return Response[ResponseSearch](
+            error="Server error",
+            status=500,
+        )
 
-    return Task(id=task_id, status="started")
+    result = []
+    for article in articles:
+        result.append(
+            Article(
+                title=article.title,
+                url=article.url,
+                authors=article.authors,
+                date=article.date,
+            )
+        )
+    response = ResponseSearch(
+        articles=result,
+        page=page,
+        count_pages=math.ceil(searcher.count_articles() / 100),
+        count_articles=len(result),
+    )
+
+    return Response[ResponseSearch](data=response)
 
 
-@router.get("/search/{task_id}")
-async def search_result(request: Request, task_id: str) -> Task:
+@router.get("/google", response_model=Response[ResponseSearch])
+async def search_all(request: Request, text: str, page: int = 1) -> Response[ResponseSearch]:
     log_extra: dict = request.state.log_extra
-    log_extra.update({"search": task_id})
+    log_extra.update({"search": text, "page": page})
 
-    result = redis.get(task_id)
-    if not result:
-        return Task(id=task_id, status="not found")
+    try:
+        searcher = GoogleSearcher(text, page, log_extra=log_extra)
+    except CaptchaError:
+        return Response[ResponseSearch](
+            error="Captcha detected",
+            status=500,
+        )
 
-    return Task(id=task_id, status="success", result=result)
-
-
-@router.get("/tasks")
-async def tasks():
-    return redis.keys()
+    articles = []
+    for article in searcher.articles():
+        articles.append(
+            Article(
+                title=article.title,
+                url=article.url,
+                authors=article.authors,
+                date=article.date,
+            )
+        )
+    response = ResponseSearch(
+        articles=articles,
+        page=page,
+        count_pages=math.ceil(searcher.count_articles() / 10),
+        count_articles=len(articles),
+    )
+    return Response[ResponseSearch](data=response)
