@@ -7,3 +7,5 @@ for i in range(1, 100):
     if data["status"] != 200:
         print(i, data)
         break
+    if data.get("data", {}).get("count_articles", 0) == 0:
+        break

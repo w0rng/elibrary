@@ -1,12 +1,13 @@
 import math
 
 from fastapi import APIRouter, Request
+from selenium.webdriver.common.by import By
 
 from api.schemas import Response, ResponseSearch, Article
 from elibrary import ELibrarySearcher
-from google_scholar import GoogleSearcher
-
+from elibrary.driver import get_driver
 from elibrary.exceptions import CaptchaError, ELibraryProblem
+from google_scholar import GoogleSearcher
 
 router = APIRouter()
 
@@ -80,3 +81,11 @@ async def search_all(request: Request, text: str, page: int = 1) -> Response[Res
         count_articles=len(articles),
     )
     return Response[ResponseSearch](data=response)
+
+
+@router.get("/test")
+async def test():
+    driver = get_driver(use_proxy=True)
+    driver.get("https://www.whatsmyip.org/")
+    driver.save_screenshot(f'/screenshots/ip.png')
+    return driver.find_element(By.XPATH, "//*[@id=\"ip\"]").text
